@@ -39,6 +39,12 @@ function formatTime(iso) {
   return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
+// ISO文字列 -> フォーム用の {date, time} に分解(ローカル時刻として扱う)
+function splitDateTime(iso) {
+  const d = new Date(iso);
+  return { date: toDateKey(d), time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}` };
+}
+
 function formatMonthLabel(d) {
   return `${d.getFullYear()}年 ${d.getMonth() + 1}月`;
 }
@@ -80,6 +86,7 @@ export default function VehiclePage() {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm());
 
@@ -171,8 +178,32 @@ export default function VehiclePage() {
 
   function openNewForm(dateKey) {
     setForm(emptyForm(dateKey || todayKey));
+    setEditingId(null);
     setSelectedDateKey(null);
     setShowForm(true);
+  }
+
+  function openEditForm(r) {
+    const startParts = splitDateTime(r.date.start);
+    const endParts = r.date.end ? splitDateTime(r.date.end) : { date: "", time: "18:00" };
+    setForm({
+      name: r.name || "",
+      startDate: startParts.date,
+      startTime: startParts.time,
+      endDate: endParts.date,
+      endTime: endParts.time,
+      user: r.user || USER_OPTIONS[0],
+      destination: r.destination || "",
+      purpose: r.purpose || [],
+      memo: r.memo || "",
+    });
+    setEditingId(r.id);
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
   }
 
   function togglePurpose(value) {
@@ -193,8 +224,11 @@ export default function VehiclePage() {
       const start = `${form.startDate}T${form.startTime}:00`;
       const end = form.endDate ? `${form.endDate}T${form.endTime}:00` : null;
 
-      const res = await fetch("/api/vehicle", {
-        method: "POST",
+      const url = editingId ? `/api/vehicle/${editingId}` : "/api/vehicle";
+      const method = editingId ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
@@ -207,9 +241,9 @@ export default function VehiclePage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "登録に失敗しました");
+      if (!res.ok) throw new Error(data.error || "保存に失敗しました");
 
-      setShowForm(false);
+      closeForm();
       setForm(emptyForm());
       load();
     } catch (err) {
@@ -338,10 +372,19 @@ export default function VehiclePage() {
             )}
 
             {selectedReservations.map((r) => (
-              <div className="reservation-card" key={r.id}>
-                <div className="date-range">
-                  {formatTime(r.date.start)}
-                  {r.date.end ? ` 〜 ${formatTime(r.date.end)}` : ""}
+              <div className={`reservation-card ${r.user || ""}`} key={r.id}>
+                <div className="card-top">
+                  <div className="date-range">
+                    {formatTime(r.date.start)}
+                    {r.date.end ? ` 〜 ${formatTime(r.date.end)}` : ""}
+                  </div>
+                  <button
+                    type="button"
+                    className="edit-btn"
+                    onClick={() => openEditForm(r)}
+                  >
+                    編集
+                  </button>
                 </div>
                 <div className="title">{r.name || "(名称未設定)"}</div>
                 {r.user && <span className={`user-tag ${r.user}`}>{r.user}</span>}
@@ -379,11 +422,11 @@ export default function VehiclePage() {
         </div>
       )}
 
-      {/* 新規登録フォーム */}
+      {/* 新規登録・編集フォーム */}
       {showForm && (
-        <div className="form-sheet" onClick={() => !saving && setShowForm(false)}>
+        <div className="form-sheet" onClick={() => !saving && closeForm()}>
           <div className="form-sheet-inner" onClick={(e) => e.stopPropagation()}>
-            <h2>新規予約</h2>
+            <h2>{editingId ? "予約を編集" : "新規予約"}</h2>
             <form onSubmit={handleSubmit}>
               <div className="field">
                 <label>予約名・件名</label>
@@ -482,13 +525,13 @@ export default function VehiclePage() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
                   disabled={saving}
                 >
                   キャンセル
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? "登録中…" : "登録する"}
+                  {saving ? "保存中…" : editingId ? "更新する" : "登録する"}
                 </button>
               </div>
             </form>

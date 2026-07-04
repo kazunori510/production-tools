@@ -272,7 +272,125 @@ button {
 .badge.lent { background: #e3ecfd; color: #2952a3; }
 .badge.sold { background: #ececec; color: #6b6b6b; }
 
-/* 車両予約 */
+/* 車両予約カレンダー */
+.cal-legend {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 10px;
+}
+
+.cal-month-label {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.cal-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.cal-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+}
+
+.cal-weekday.sun { color: #c1362b; }
+.cal-weekday.sat { color: #2952a3; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-day {
+  position: relative;
+  aspect-ratio: 1 / 1.05;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.cal-day.out {
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.35;
+}
+
+.cal-day.today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.cal-day-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cal-day-num.sun { color: #c1362b; }
+.cal-day-num.sat { color: #2952a3; }
+
+.cal-day-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.cal-dot {
+  font-size: 9.5px;
+  line-height: 1.3;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: left;
+}
+
+.cal-dot.和典 { background: #ffe4da; color: #b8431f; }
+.cal-dot.風香 { background: #f0e3fb; color: #6b3fa0; }
+
+.cal-more {
+  font-size: 9.5px;
+  color: var(--ink-soft);
+}
+
+/* 車両予約(日別シート用カード) */
 .reservation-card {
   background: var(--surface);
   border: 1px solid var(--line);

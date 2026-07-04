@@ -1,569 +1,431 @@
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+"use client";
 
-:root {
-  --bg: #f2f4f1;
-  --surface: #ffffff;
-  --ink: #1c2321;
-  --ink-soft: #52605c;
-  --line: #d9ddd6;
-  --accent: #ff5a36;
-  --accent-ink: #ffffff;
-  --teal: #1f6f5c;
-  --danger: #c1362b;
-  --radius: 14px;
-  --font-display: "Oswald", "Hiragino Sans", sans-serif;
-  --font-body: "Inter", "Hiragino Sans", "Yu Gothic", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+import { useEffect, useMemo, useState } from "react";
+
+const PURPOSE_OPTIONS = [
+  "撮影",
+  "撮影準備",
+  "打ち合わせ",
+  "ロケハン",
+  "小道具リサーチ",
+  "小道具手配・リサーチ",
+  "機材pic・返却",
+  "ｵｰﾃﾞｨｼｮﾝ",
+  "移動手段",
+];
+
+const DESTINATION_OPTIONS = ["県内", "県外", "BIGSTONE", "Lab751", "T&E", "Ings-JBS"];
+const USER_OPTIONS = ["和典", "風香"];
+const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
 }
 
-* {
-  box-sizing: border-box;
+// ローカルタイムでの YYYY-MM-DD を返す(タイムゾーンずれを避けるため toISOString は使わない)
+function toDateKey(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-html,
-body {
-  padding: 0;
-  margin: 0;
+function formatTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-  padding-bottom: 84px;
+function formatMonthLabel(d) {
+  return `${d.getFullYear()}年 ${d.getMonth() + 1}月`;
 }
 
-a {
-  color: inherit;
+function buildMonthMatrix(viewDate) {
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay(); // 0=日
+  const gridStart = new Date(year, month, 1 - startOffset);
+
+  const days = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push(d);
+  }
+  return days;
 }
 
-button {
-  font-family: inherit;
+function emptyForm(dateKey) {
+  return {
+    name: "",
+    startDate: dateKey || "",
+    startTime: "09:00",
+    endDate: "",
+    endTime: "18:00",
+    user: USER_OPTIONS[0],
+    destination: "",
+    purpose: [],
+    memo: "",
+  };
 }
 
-/* 上部のクラップボード風ストライプ */
-.slate-bar {
-  height: 10px;
-  width: 100%;
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--ink) 0px,
-    var(--ink) 14px,
-    #ffffff 14px,
-    #ffffff 28px
+export default function VehiclePage() {
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(emptyForm());
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/vehicle");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "取得に失敗しました");
+      setReservations(data.reservations || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  // 日付キー(YYYY-MM-DD) -> その日の予約一覧
+  const reservationsByDate = useMemo(() => {
+    const map = {};
+    for (const r of reservations) {
+      if (!r.date?.start) continue;
+      const key = toDateKey(new Date(r.date.start));
+      if (!map[key]) map[key] = [];
+      map[key].push(r);
+    }
+    return map;
+  }, [reservations]);
+
+  const todayKey = toDateKey(new Date());
+  const monthDays = useMemo(() => buildMonthMatrix(viewDate), [viewDate]);
+  const currentMonthIndex = viewDate.getMonth();
+
+  function goToMonth(offset) {
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + offset, 1));
+  }
+
+  function openDay(dateKey) {
+    setSelectedDateKey(dateKey);
+  }
+
+  function openNewForm(dateKey) {
+    setForm(emptyForm(dateKey || todayKey));
+    setSelectedDateKey(null);
+    setShowForm(true);
+  }
+
+  function togglePurpose(value) {
+    setForm((f) => ({
+      ...f,
+      purpose: f.purpose.includes(value)
+        ? f.purpose.filter((v) => v !== value)
+        : [...f.purpose, value],
+    }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name || !form.startDate) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const start = `${form.startDate}T${form.startTime}:00`;
+      const end = form.endDate ? `${form.endDate}T${form.endTime}:00` : null;
+
+      const res = await fetch("/api/vehicle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          start,
+          end,
+          user: form.user,
+          destination: form.destination || undefined,
+          purpose: form.purpose,
+          memo: form.memo,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "登録に失敗しました");
+
+      setShowForm(false);
+      setForm(emptyForm());
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const selectedReservations = selectedDateKey
+    ? reservationsByDate[selectedDateKey] || []
+    : [];
+
+  return (
+    <div>
+      <header className="page-header">
+        <div className="eyebrow">Vehicle</div>
+        <h1>車両予約</h1>
+      </header>
+
+      <div className="container">
+        <div className="cal-legend">
+          <span className="user-tag 和典">和典</span>
+          <span className="user-tag 風香">風香</span>
+        </div>
+
+        <div className="cal-header">
+          <button className="cal-nav-btn" onClick={() => goToMonth(-1)} aria-label="前の月">
+            ‹
+          </button>
+          <div className="cal-month-label">{formatMonthLabel(viewDate)}</div>
+          <button className="cal-nav-btn" onClick={() => goToMonth(1)} aria-label="次の月">
+            ›
+          </button>
+        </div>
+
+        {loading && <div className="state-msg">読み込み中…</div>}
+        {error && <div className="state-msg error">{error}</div>}
+
+        {!loading && !error && (
+          <>
+            <div className="cal-weekday-row">
+              {WEEKDAY_LABELS.map((w, i) => (
+                <div
+                  key={w}
+                  className={`cal-weekday ${i === 0 ? "sun" : ""} ${i === 6 ? "sat" : ""}`}
+                >
+                  {w}
+                </div>
+              ))}
+            </div>
+
+            <div className="cal-grid">
+              {monthDays.map((d) => {
+                const key = toDateKey(d);
+                const inMonth = d.getMonth() === currentMonthIndex;
+                const isToday = key === todayKey;
+                const dayReservations = reservationsByDate[key] || [];
+                const weekday = d.getDay();
+
+                return (
+                  <button
+                    key={key}
+                    className={`cal-day ${inMonth ? "" : "out"} ${isToday ? "today" : ""}`}
+                    onClick={() => openDay(key)}
+                  >
+                    <span
+                      className={`cal-day-num ${weekday === 0 ? "sun" : ""} ${
+                        weekday === 6 ? "sat" : ""
+                      }`}
+                    >
+                      {d.getDate()}
+                    </span>
+                    <span className="cal-day-tags">
+                      {dayReservations.slice(0, 2).map((r) => (
+                        <span key={r.id} className={`cal-dot ${r.user || ""}`}>
+                          {r.name || "予約"}
+                        </span>
+                      ))}
+                      {dayReservations.length > 2 && (
+                        <span className="cal-more">+{dayReservations.length - 2}</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      <button className="fab" onClick={() => openNewForm(todayKey)} aria-label="新規予約を登録">
+        ＋
+      </button>
+
+      {/* 日別の予約確認シート */}
+      {selectedDateKey && (
+        <div className="form-sheet" onClick={() => setSelectedDateKey(null)}>
+          <div className="form-sheet-inner" onClick={(e) => e.stopPropagation()}>
+            <h2>{selectedDateKey.replace(/-/g, "/")}</h2>
+
+            {selectedReservations.length === 0 && (
+              <div className="state-msg" style={{ padding: "16px 0" }}>
+                この日の予約はまだありません。
+              </div>
+            )}
+
+            {selectedReservations.map((r) => (
+              <div className="reservation-card" key={r.id}>
+                <div className="date-range">
+                  {formatTime(r.date.start)}
+                  {r.date.end ? ` 〜 ${formatTime(r.date.end)}` : ""}
+                </div>
+                <div className="title">{r.name || "(名称未設定)"}</div>
+                {r.user && <span className={`user-tag ${r.user}`}>{r.user}</span>}
+                {r.destination && (
+                  <span className="tag" style={{ marginLeft: 6 }}>{r.destination}</span>
+                )}
+                {r.memo && <div className="meta" style={{ marginTop: 8 }}>{r.memo}</div>}
+                {r.purpose?.length > 0 && (
+                  <div className="tag-row">
+                    {r.purpose.map((p) => (
+                      <span className="tag" key={p}>{p}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setSelectedDateKey(null)}
+              >
+                閉じる
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => openNewForm(selectedDateKey)}
+              >
+                ＋ この日に予約を追加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新規登録フォーム */}
+      {showForm && (
+        <div className="form-sheet" onClick={() => !saving && setShowForm(false)}>
+          <div className="form-sheet-inner" onClick={(e) => e.stopPropagation()}>
+            <h2>新規予約</h2>
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <label>予約名・件名</label>
+                <input
+                  type="text"
+                  placeholder="例：〇〇撮影 移動"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label>利用者</label>
+                <select
+                  value={form.user}
+                  onChange={(e) => setForm({ ...form, user: e.target.value })}
+                >
+                  {USER_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>開始日時</label>
+                <input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                  required
+                  style={{ marginBottom: 8 }}
+                />
+                <input
+                  type="time"
+                  value={form.startTime}
+                  onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                />
+              </div>
+
+              <div className="field">
+                <label>終了日時(任意)</label>
+                <input
+                  type="date"
+                  value={form.endDate}
+                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                  style={{ marginBottom: 8 }}
+                />
+                <input
+                  type="time"
+                  value={form.endTime}
+                  onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                />
+              </div>
+
+              <div className="field">
+                <label>行き先</label>
+                <select
+                  value={form.destination}
+                  onChange={(e) => setForm({ ...form, destination: e.target.value })}
+                >
+                  <option value="">選択なし</option>
+                  {DESTINATION_OPTIONS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>用途</label>
+                <div className="check-grid">
+                  {PURPOSE_OPTIONS.map((p) => (
+                    <label className="check-pill" key={p}>
+                      <input
+                        type="checkbox"
+                        checked={form.purpose.includes(p)}
+                        onChange={() => togglePurpose(p)}
+                      />
+                      {p}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <label>メモ(同乗者・積載物など)</label>
+                <textarea
+                  value={form.memo}
+                  onChange={(e) => setForm({ ...form, memo: e.target.value })}
+                />
+              </div>
+
+              {error && <div className="state-msg error">{error}</div>}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowForm(false)}
+                  disabled={saving}
+                >
+                  キャンセル
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? "登録中…" : "登録する"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
-}
-
-.page-header {
-  padding: 20px 20px 16px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
-
-.page-header .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-}
-
-.page-header h1 {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  margin: 4px 0 0;
-}
-
-.container {
-  padding: 16px;
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-/* ホーム画面のメニューカード */
-.menu-grid {
-  display: grid;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.menu-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 18px 16px;
-  text-decoration: none;
-  color: var(--ink);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-.menu-card:active {
-  transform: scale(0.98);
-}
-
-.menu-card .icon {
-  font-size: 26px;
-  width: 46px;
-  height: 46px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: var(--bg);
-  flex-shrink: 0;
-}
-
-.menu-card .label {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.menu-card .desc {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin-top: 2px;
-}
-
-/* 下部ナビゲーション */
-.bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
-  z-index: 20;
-}
-
-.bottom-nav a {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 0 8px;
-  text-decoration: none;
-  color: var(--ink-soft);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.bottom-nav a.active {
-  color: var(--accent);
-}
-
-.bottom-nav .nav-icon {
-  font-size: 20px;
-}
-
-/* タブ切り替え(私物/レンタル) */
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin: 16px 0;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-
-.tab-btn.active {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-}
-
-/* 検索・フィルタ */
-.search-input {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  font-size: 15px;
-  background: var(--surface);
-}
-
-.chip-row {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 12px 0 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.chip {
-  flex-shrink: 0;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 13px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.chip.active {
-  background: var(--teal);
-  border-color: var(--teal);
-  color: #fff;
-}
-
-/* 機材カード */
-.item-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-}
-
-.item-card .top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.item-card .name {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.item-card .meta {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin-top: 2px;
-}
-
-.item-card .mono {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.badge.good { background: #e4f3ec; color: var(--teal); }
-.badge.used { background: #fff3d9; color: #8a6100; }
-.badge.repair { background: #fde4e1; color: var(--danger); }
-.badge.lent { background: #e3ecfd; color: #2952a3; }
-.badge.sold { background: #ececec; color: #6b6b6b; }
-
-/* 車両予約カレンダー */
-.cal-legend {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.cal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 14px 0 10px;
-}
-
-.cal-month-label {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.cal-nav-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 20px;
-  line-height: 1;
-  color: var(--ink-soft);
-}
-
-.cal-weekday-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 4px;
-}
-
-.cal-weekday {
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  padding-bottom: 4px;
-}
-
-.cal-weekday.sun { color: #c1362b; }
-.cal-weekday.sat { color: #2952a3; }
-
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.cal-day {
-  position: relative;
-  aspect-ratio: 1 / 1.05;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: 10px;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  overflow: hidden;
-}
-
-.cal-day.out {
-  background: transparent;
-  border-color: transparent;
-  opacity: 0.35;
-}
-
-.cal-day.today {
-  border-color: var(--accent);
-  border-width: 2px;
-}
-
-.cal-day-num {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.cal-day-num.sun { color: #c1362b; }
-.cal-day-num.sat { color: #2952a3; }
-
-.cal-day-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-}
-
-.cal-dot {
-  font-size: 9.5px;
-  line-height: 1.3;
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  text-align: left;
-}
-
-.cal-dot.和典 { background: #ffe4da; color: #b8431f; }
-.cal-dot.風香 { background: #f0e3fb; color: #6b3fa0; }
-
-.cal-more {
-  font-size: 9.5px;
-  color: var(--ink-soft);
-}
-
-/* 車両予約(日別シート用カード) */
-.reservation-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-}
-
-.reservation-card .date-range {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
-.reservation-card .title {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  margin: 2px 0 6px;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.tag {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--ink-soft);
-}
-
-.user-tag {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.user-tag.和典 { background: #ffe4da; color: #b8431f; }
-.user-tag.風香 { background: #f0e3fb; color: #6b3fa0; }
-
-/* FAB(新規予約ボタン) */
-.fab {
-  position: fixed;
-  right: 20px;
-  bottom: 96px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(255, 90, 54, 0.4);
-  z-index: 15;
-}
-
-/* フォーム */
-.form-sheet {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 35, 33, 0.5);
-  z-index: 30;
-  display: flex;
-  align-items: flex-end;
-}
-
-.form-sheet-inner {
-  background: var(--surface);
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  border-radius: 20px 20px 0 0;
-  padding: 20px;
-}
-
-.form-sheet-inner h2 {
-  font-family: var(--font-display);
-  font-size: 20px;
-  margin: 0 0 16px;
-}
-
-.field {
-  margin-bottom: 14px;
-}
-
-.field label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  margin-bottom: 6px;
-}
-
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 11px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  font-size: 15px;
-  background: var(--bg);
-  font-family: var(--font-body);
-}
-
-.field textarea {
-  min-height: 70px;
-  resize: vertical;
-}
-
-.check-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.check-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  font-size: 13px;
-  background: var(--bg);
-}
-
-.check-pill input {
-  width: auto;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.btn {
-  flex: 1;
-  padding: 13px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-secondary {
-  background: var(--bg);
-  color: var(--ink-soft);
-}
-
-.state-msg {
-  text-align: center;
-  color: var(--ink-soft);
-  padding: 40px 16px;
-  font-size: 14px;
-}
-
-.state-msg.error {
-  color: var(--danger);
 }

@@ -1,32 +1,569 @@
-import Link from "next/link";
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
 
-export default function Home() {
-  return (
-    <div>
-      <header className="page-header">
-        <div className="eyebrow">Production Tools</div>
-        <h1>現場ツール</h1>
-      </header>
+:root {
+  --bg: #f2f4f1;
+  --surface: #ffffff;
+  --ink: #1c2321;
+  --ink-soft: #52605c;
+  --line: #d9ddd6;
+  --accent: #ff5a36;
+  --accent-ink: #ffffff;
+  --teal: #1f6f5c;
+  --danger: #c1362b;
+  --radius: 14px;
+  --font-display: "Oswald", "Hiragino Sans", sans-serif;
+  --font-body: "Inter", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
 
-      <div className="container">
-        <div className="menu-grid">
-          <Link href="/vehicle" className="menu-card">
-            <span className="icon">🚐</span>
-            <div>
-              <div className="label">車両予約</div>
-              <div className="desc">使用予定の確認・新規登録</div>
-            </div>
-          </Link>
+* {
+  box-sizing: border-box;
+}
 
-          <Link href="/equipment" className="menu-card">
-            <span className="icon">🎥</span>
-            <div>
-              <div className="label">機材一覧</div>
-              <div className="desc">私物機材・レンタル機材を検索</div>
-            </div>
-          </Link>
-        </div>
-      </div>
-    </div>
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 84px;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* 上部のクラップボード風ストライプ */
+.slate-bar {
+  height: 10px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink) 0px,
+    var(--ink) 14px,
+    #ffffff 14px,
+    #ffffff 28px
   );
+}
+
+.page-header {
+  padding: 20px 20px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.page-header .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+.page-header h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 4px 0 0;
+}
+
+.container {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* ホーム画面のメニューカード */
+.menu-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.menu-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.menu-card:active {
+  transform: scale(0.98);
+}
+
+.menu-card .icon {
+  font-size: 26px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.menu-card .label {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.menu-card .desc {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+/* 下部ナビゲーション */
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 20;
+}
+
+.bottom-nav a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 0 8px;
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bottom-nav a.active {
+  color: var(--accent);
+}
+
+.bottom-nav .nav-icon {
+  font-size: 20px;
+}
+
+/* タブ切り替え(私物/レンタル) */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.tab-btn.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* 検索・フィルタ */
+.search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  background: var(--surface);
+}
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 0 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.chip.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+/* 機材カード */
+.item-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.item-card .top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.item-card .name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.item-card .meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.item-card .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge.good { background: #e4f3ec; color: var(--teal); }
+.badge.used { background: #fff3d9; color: #8a6100; }
+.badge.repair { background: #fde4e1; color: var(--danger); }
+.badge.lent { background: #e3ecfd; color: #2952a3; }
+.badge.sold { background: #ececec; color: #6b6b6b; }
+
+/* 車両予約カレンダー */
+.cal-legend {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 10px;
+}
+
+.cal-month-label {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.cal-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.cal-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+}
+
+.cal-weekday.sun { color: #c1362b; }
+.cal-weekday.sat { color: #2952a3; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-day {
+  position: relative;
+  aspect-ratio: 1 / 1.05;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.cal-day.out {
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.35;
+}
+
+.cal-day.today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.cal-day-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cal-day-num.sun { color: #c1362b; }
+.cal-day-num.sat { color: #2952a3; }
+
+.cal-day-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.cal-dot {
+  font-size: 9.5px;
+  line-height: 1.3;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: left;
+}
+
+.cal-dot.和典 { background: #ffe4da; color: #b8431f; }
+.cal-dot.風香 { background: #f0e3fb; color: #6b3fa0; }
+
+.cal-more {
+  font-size: 9.5px;
+  color: var(--ink-soft);
+}
+
+/* 車両予約(日別シート用カード) */
+.reservation-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.reservation-card .date-range {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.reservation-card .title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 6px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink-soft);
+}
+
+.user-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.user-tag.和典 { background: #ffe4da; color: #b8431f; }
+.user-tag.風香 { background: #f0e3fb; color: #6b3fa0; }
+
+/* FAB(新規予約ボタン) */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 96px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(255, 90, 54, 0.4);
+  z-index: 15;
+}
+
+/* フォーム */
+.form-sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 35, 33, 0.5);
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+}
+
+.form-sheet-inner {
+  background: var(--surface);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+}
+
+.form-sheet-inner h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0 0 16px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  background: var(--bg);
+  font-family: var(--font-body);
+}
+
+.field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  background: var(--bg);
+}
+
+.check-pill input {
+  width: auto;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--ink-soft);
+}
+
+.state-msg {
+  text-align: center;
+  color: var(--ink-soft);
+  padding: 40px 16px;
+  font-size: 14px;
+}
+
+.state-msg.error {
+  color: var(--danger);
 }

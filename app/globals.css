@@ -304,12 +304,13 @@ button {
 }
 
 .cal-weekday-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: flex;
+  gap: 2px;
   margin-bottom: 4px;
 }
 
 .cal-weekday {
+  flex: 1;
   text-align: center;
   font-size: 12px;
   font-weight: 600;
@@ -320,19 +321,21 @@ button {
 .cal-weekday.sun { color: #c1362b; }
 .cal-weekday.sat { color: #2952a3; }
 
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+.cal-week {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
 .cal-day {
   position: relative;
-  aspect-ratio: 1 / 1.05;
+  flex: 1;
+  min-width: 0;
+  min-height: 70px;
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 10px;
-  padding: 4px;
+  border-radius: 6px;
+  padding: 3px 2px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -346,48 +349,89 @@ button {
   opacity: 0.35;
 }
 
+/* 土日はセル背景をわずかに色付け */
+.cal-day.sun { background: #fdf1ef; }
+.cal-day.sat { background: #eef3fb; }
+.cal-day.out.sun,
+.cal-day.out.sat {
+  background: transparent;
+}
+
+/* 今日は太い枠ではなく、上に細いラインだけ */
 .cal-day.today {
-  border-color: var(--accent);
-  border-width: 2px;
+  border-color: var(--line);
+}
+
+.cal-day.today::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
 }
 
 .cal-day-num {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink);
+  line-height: 1;
 }
 
 .cal-day-num.sun { color: #c1362b; }
 .cal-day-num.sat { color: #2952a3; }
 
-.cal-day-tags {
+.cal-bars {
   display: flex;
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  margin: 0 -2px;
 }
 
-.cal-dot {
-  font-size: 9.5px;
-  line-height: 1.3;
-  padding: 1px 4px;
-  border-radius: 4px;
+.cal-bar,
+.cal-bar-empty {
+  height: 13px;
+  font-size: 9px;
+  line-height: 13px;
+}
+
+.cal-bar-empty {
+  visibility: hidden;
+}
+
+.cal-bar {
+  display: block;
+  padding: 0 3px;
   background: var(--bg);
   color: var(--ink-soft);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
-  text-align: left;
+  border-radius: 0;
 }
 
-.cal-dot.和典 { background: #ffe4da; color: #b8431f; }
-.cal-dot.風香 { background: #f0e3fb; color: #6b3fa0; }
+.cal-bar.cap-start {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  margin-left: 2px;
+}
+
+.cal-bar.cap-end {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  margin-right: 2px;
+}
+
+.cal-bar.和典 { background: #ffe4da; color: #b8431f; }
+.cal-bar.風香 { background: #f0e3fb; color: #6b3fa0; }
 
 .cal-more {
-  font-size: 9.5px;
+  font-size: 9px;
   color: var(--ink-soft);
+  padding-left: 3px;
 }
 
 /* 車両予約(日別シート用カード) */

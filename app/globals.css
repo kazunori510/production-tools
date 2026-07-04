@@ -444,6 +444,26 @@ button {
   margin-bottom: 10px;
 }
 
+.reservation-card.和典 { border-left-color: #b8431f; }
+.reservation-card.風香 { border-left-color: #6b3fa0; }
+
+.reservation-card .card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edit-btn {
+  border: none;
+  background: var(--bg);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .reservation-card .date-range {
   font-family: var(--font-mono);
   font-size: 13px;

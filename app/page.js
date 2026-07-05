@@ -25,6 +25,14 @@ export default function Home() {
               <div className="desc">私物機材・レンタル機材を検索</div>
             </div>
           </Link>
+
+          <Link href="/props" className="menu-card">
+            <span className="icon">📦</span>
+            <div>
+              <div className="label">小道具・衣装</div>
+              <div className="desc">写真・サイズ・在庫・レンタル料金を確認</div>
+            </div>
+          </Link>
         </div>
       </div>
     </div>

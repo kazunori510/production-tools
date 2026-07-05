@@ -2,17 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const CONDITION_BADGE = {
-  良好: "good",
-  使用感あり: "used",
-  要修理: "repair",
-  貸出中: "lent",
-  売却済: "sold",
-};
-
 function formatYen(n) {
   if (n === null || n === undefined) return null;
-  return `¥${n.toLocaleString("ja-JP")}`;
+  return n.toLocaleString("ja-JP");
 }
 
 export default function EquipmentPage() {
@@ -48,9 +40,10 @@ export default function EquipmentPage() {
   }, [tab]);
 
   const categories = useMemo(() => {
-    const set = new Set(items.map((i) => i.category).filter(Boolean));
+    const key = tab === "rental" ? "category" : "category";
+    const set = new Set(items.map((i) => i[key]).filter(Boolean));
     return ["すべて", ...Array.from(set)];
-  }, [items]);
+  }, [items, tab]);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -92,7 +85,7 @@ export default function EquipmentPage() {
         <input
           className="search-input"
           type="text"
-          placeholder="機材名・メーカー・型番で検索"
+          placeholder="機材名で検索"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -117,54 +110,81 @@ export default function EquipmentPage() {
           <div className="state-msg">該当する機材が見つかりません。</div>
         )}
 
-        {!loading &&
-          !error &&
-          filtered.map((item) => (
-            <div className="item-card" key={item.id}>
-              <div className="top-row">
-                <div>
-                  <div className="name">{item.name || "(名称未設定)"}</div>
-                  <div className="meta">
-                    {[item.maker, item.model].filter(Boolean).join(" / ") ||
-                      item.company ||
-                      ""}
-                  </div>
-                </div>
-                {tab === "personal" && item.condition && (
-                  <span className={`badge ${CONDITION_BADGE[item.condition] || ""}`}>
-                    {item.condition}
-                  </span>
-                )}
-              </div>
-
-              {tab === "personal" && (
-                <div className="meta" style={{ marginTop: 8 }}>
-                  {item.quantity != null && <>数量: {item.quantity}　</>}
-                  {item.serial && <span className="mono">S/N {item.serial}</span>}
-                </div>
-              )}
-
-              {tab === "rental" && (
-                <div className="meta" style={{ marginTop: 8 }}>
-                  {item.pricePerDay != null && <>1day: {formatYen(item.pricePerDay)}　</>}
-                  {item.company && <>レンタル先: {item.company}</>}
-                </div>
-              )}
-
-              {item.accessories && (
-                <div className="meta" style={{ marginTop: 4 }}>付属品: {item.accessories}</div>
-              )}
-
-              {item.link && (
-                <div style={{ marginTop: 8 }}>
-                  <a href={item.link} target="_blank" rel="noreferrer" className="tag">
-                    関連リンク ↗
-                  </a>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="equip-grid">
+          {!loading &&
+            !error &&
+            filtered.map((item) =>
+              tab === "personal" ? (
+                <PersonalCard key={item.id} item={item} />
+              ) : (
+                <RentalCard key={item.id} item={item} />
+              )
+            )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ItemPhoto({ src, alt }) {
+  if (!src) {
+    return (
+      <div className="item-photo empty">
+        <span>📷</span>
+        <span>画像なし</span>
+      </div>
+    );
+  }
+  return (
+    <div className="item-photo">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} loading="lazy" />
+    </div>
+  );
+}
+
+function PersonalCard({ item }) {
+  return (
+    <div className="equip-card">
+      <ItemPhoto src={item.images?.[0]} alt={item.name} />
+      <div className="equip-name">{item.name || "(名称未設定)"}</div>
+
+      <div className="spec-row">
+        <span className="spec-label">数量</span>
+        <span className="spec-value">
+          {item.quantity != null ? `${item.quantity}` : "―"}
+        </span>
+      </div>
+      <div className="spec-row">
+        <span className="spec-label">付属品</span>
+        <span className="spec-value">{item.accessories || "―"}</span>
+      </div>
+    </div>
+  );
+}
+
+function RentalCard({ item }) {
+  return (
+    <div className="equip-card">
+      <ItemPhoto src={item.images?.[0]} alt={item.name} />
+      <div className="equip-name">{item.name || "(名称未設定)"}</div>
+
+      <div className="rental-meta">
+        {item.company && <span className="company-tag">{item.company}</span>}
+        {item.pricePerDay != null && (
+          <span className="price-tag">
+            ¥{formatYen(item.pricePerDay)}
+            <span className="unit"> / day</span>
+          </span>
+        )}
+      </div>
+
+      {item.accessories && (
+        <div className="spec-row">
+          <span className="spec-label">付属品</span>
+          <span className="spec-value">{item.accessories}</span>
+        </div>
+      )}
     </div>
   );
 }
